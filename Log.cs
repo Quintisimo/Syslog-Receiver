@@ -79,6 +79,8 @@ namespace SyslogReceiver
 
         public string Msg { get; set; }
 
-        public string Type { get; set; }
+        public int ProcessId { get; set; }
+
+        public string ProcessName { get; set; }
     }
 }

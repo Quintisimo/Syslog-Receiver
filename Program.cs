@@ -13,7 +13,7 @@ namespace SyslogReceiver
     class Program
     {
         private const int PORT = 514;
-        private const string DIRECTORY = @"D:\User\Documents\Logs";
+        private const string DIRECTORY = @"C:\Users\Administrator\Documents";
         private const string FILE_NAME = "log";
 
         private const string TEST_MESSAGE_1 = @"<30>May  7 11:43:55 dhcpd[56209]: DHCPACK on 192.168.199.2 to 50:c7:bf:9e:c6:6c via em4";
@@ -25,13 +25,10 @@ namespace SyslogReceiver
         private const string DATE_REGEX = @"(?<=\>)(\w+\s+\d+\s[^\s]+)";
         private const string DATE_FORMAT = @"MMM  d HH:mm:ss";
 
-        private const string TYPE_REGEX = @"(\w+)(?=([:\s]*\[))";
+        private const string PROCESS_NAME_REGEX = @"(\w+)(?=([:\s]*\[))";
+        private const string PROCESS_ID_REGEX = @"(?<=\[)(\d+)(?=[:\d]*\])";
 
         private const string MESSAGE_REGEX = @"(?<=]:*\s)(.*)";
-
-        //private const string MESSAGE_REGEX = @"(?<=])(.*)";
-        //private const string MESSAGE_TYPE_REGEX = @"^(.*?)(?=:)";
-        //private const string MESSAGE_TEXT_REGEX = @"(?<=:)(.*)";
 
         private static List<string> Queue = new List<string>();
         private static readonly object writerLock = new object();
@@ -46,8 +43,8 @@ namespace SyslogReceiver
                 Thread listenerThread = new Thread(StartServer);
                 listenerThread.Start();
 
-                Thread testerThread = new Thread(Tester);
-                testerThread.Start();
+                //Thread testerThread = new Thread(Tester);
+                //testerThread.Start();
 
                 Task.Run(() => WriterTask());
             }
@@ -109,9 +106,11 @@ namespace SyslogReceiver
                             if (!message.Contains("last message repeated"))
                             {
                                 DateTime timeStamp = DateTime.ParseExact(GetValue(DATE_REGEX, message), DATE_FORMAT, null);
-                                string type = GetValue(TYPE_REGEX, message);
                                 string msg = GetValue(MESSAGE_REGEX, message);
                                 string hostname = endPoint.Address.ToString();
+
+                                int processId = int.Parse(GetValue(PROCESS_ID_REGEX, message));
+                                string processName = GetValue(PROCESS_NAME_REGEX, message);
 
                                 int priority = int.Parse(GetValue(PRIORITY_REGEX, message));
                                 int facility = priority / 8;
@@ -122,7 +121,8 @@ namespace SyslogReceiver
                                     Hostname = hostname,
                                     Timestamp = timeStamp,
                                     Msg = msg,
-                                    Type = type,
+                                    ProcessId = processId,
+                                    ProcessName = processName,
                                     Facility = facility,
                                     Severity = severity,
                                 };
@@ -199,9 +199,10 @@ namespace SyslogReceiver
             {
                 fsAppend.WriteLine($"Host: {log.Hostname}");
                 fsAppend.WriteLine($"Timestamp: {log.Timestamp}");
+                fsAppend.WriteLine($"Process Id: {log.ProcessId}");
+                fsAppend.WriteLine($"Process Name: {log.ProcessName}");
                 fsAppend.WriteLine($"Severity: {log.getSeverity()}");
                 fsAppend.WriteLine($"Facility: {log.getFacility()}");
-                fsAppend.WriteLine($"Type: {log.Type}");
                 fsAppend.WriteLine($"Message: {log.Msg}{Environment.NewLine}");
             }
         }
