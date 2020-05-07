@@ -12,16 +12,31 @@ namespace SyslogReceiver
 {
     class Program
     {
-        private const int PORT = 11000;
+        private const int PORT = 514;
         private const string DIRECTORY = @"D:\User\Documents\Logs";
         private const string FILE_NAME = "log";
 
-        private const string TEST_MESSAGE = "<100>2 1982-07-10T20:30:40.001Z myserver.com su 201 32001 - BOM 'su root' failed on /dev/pts/7";
+        private const string TEST_MESSAGE_1 = @"<30>May  7 11:43:55 dhcpd[56209]: DHCPACK on 192.168.199.2 to 50:c7:bf:9e:c6:6c via em4";
+        private const string TEST_MESSAGE_2 = @"<30>May  7 11:03:36 unbound: [43078:0] info: resolving www.tm.a.prd.aadg.akadns.net. A IN";
+        private const string TEST_MESSAGE_3 = @"<30>May  7 12:27:40 iked[80712]: spi=0x146e2464e6c8c522: sa_state: ESTABLISHED -> CLOSED from 110.232.116.36:4500 to 172.31.255.255:4500 policy 'PharmX Stub Tunnel'";
+
         private const string PRIORITY_REGEX = @"(?<=\<)(.*?)(?=\>)";
-        private const string VERSION_REGEX = @"(?<=\>)\d+";
+
+        private const string DATE_REGEX = @"(?<=\>)(\w+\s+\d+\s[^\s]+)";
+        private const string DATE_FORMAT = @"MMM  d HH:mm:ss";
+
+        private const string TYPE_REGEX = @"(\w+)(?=([:\s]*\[))";
+
+        private const string MESSAGE_REGEX = @"(?<=]:*\s)(.*)";
+
+        //private const string MESSAGE_REGEX = @"(?<=])(.*)";
+        //private const string MESSAGE_TYPE_REGEX = @"^(.*?)(?=:)";
+        //private const string MESSAGE_TEXT_REGEX = @"(?<=:)(.*)";
 
         private static List<string> Queue = new List<string>();
         private static readonly object writerLock = new object();
+
+        private static IPEndPoint endPoint;
 
 
         static void Main(string[] args)
@@ -49,7 +64,7 @@ namespace SyslogReceiver
         private static void StartServer()
         {
             UdpClient listener = new UdpClient(PORT);
-            IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, PORT);
+            endPoint = new IPEndPoint(IPAddress.Any, PORT);
             Console.WriteLine("Waiting for message");
 
             try
@@ -58,7 +73,7 @@ namespace SyslogReceiver
                 {
                     byte[] bytes = listener.Receive(ref endPoint);
                     string data = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
-
+                    Console.WriteLine(data);
                     lock(writerLock)
                     {
                         Queue.Add(data);
@@ -91,35 +106,32 @@ namespace SyslogReceiver
                     {
                         foreach (string message in Queue)
                         {
-                            string[] messageArr = message.Split();
-                            int priority = int.Parse(GetValue(PRIORITY_REGEX, messageArr[0]));
-
-                            int facility = priority / 8;
-                            int severity = priority - (facility * 8);
-                            int version = int.Parse(GetValue(VERSION_REGEX, messageArr[0]));
-                            DateTime timeStamp = DateTime.Parse(messageArr[1]);
-                            string hostname = messageArr[2];
-                            string appName = messageArr[3];
-                            int procId = int.Parse(messageArr[4]);
-                            int msgId = int.Parse(messageArr[5]);
-                            string msg = string.Join(" ", new ArraySegment<string>(messageArr, 8, messageArr.Length - 8));
-
-                            Log log = new Log
+                            if (!message.Contains("last message repeated"))
                             {
-                                Hostname = hostname,
-                                Timestamp = timeStamp,
-                                Msg = msg,
-                                Facility = facility,
-                                Severity = severity,
-                                Version = version,
-                                AppName = appName,
-                                ProcId = procId,
-                                MsgId = msgId
-                            };
+                                DateTime timeStamp = DateTime.ParseExact(GetValue(DATE_REGEX, message), DATE_FORMAT, null);
+                                string type = GetValue(TYPE_REGEX, message);
+                                string msg = GetValue(MESSAGE_REGEX, message);
+                                string hostname = endPoint.Address.ToString();
 
-                            WriteToFile(log);
-                            Console.WriteLine($"Received from {hostname}");
-                            Console.WriteLine($"Data: {message}{Environment.NewLine}");
+                                int priority = int.Parse(GetValue(PRIORITY_REGEX, message));
+                                int facility = priority / 8;
+                                int severity = priority - (facility * 8);
+
+                                Log log = new Log
+                                {
+                                    Hostname = hostname,
+                                    Timestamp = timeStamp,
+                                    Msg = msg,
+                                    Type = type,
+                                    Facility = facility,
+                                    Severity = severity,
+                                };
+
+                                WriteToFile(log);
+                                Console.WriteLine($"Received from {hostname}");
+                                Console.WriteLine($"Data: {message}{Environment.NewLine}");
+
+                            }
                         }
                         Queue = new List<string>();
                     }
@@ -151,8 +163,8 @@ namespace SyslogReceiver
             Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPAddress broadcast = IPAddress.Parse("127.0.0.1");
 
-            byte[] send = Encoding.ASCII.GetBytes(TEST_MESSAGE);
-            IPEndPoint endPoint = new IPEndPoint(broadcast, 11000);
+            byte[] send = Encoding.ASCII.GetBytes(TEST_MESSAGE_3);
+            IPEndPoint endPoint = new IPEndPoint(broadcast, 514);
 
             while (true)
             {
@@ -186,10 +198,10 @@ namespace SyslogReceiver
             using (StreamWriter fsAppend= File.AppendText(fileName))
             {
                 fsAppend.WriteLine($"Host: {log.Hostname}");
-                fsAppend.WriteLine($"Version: {log.Version}");
                 fsAppend.WriteLine($"Timestamp: {log.Timestamp}");
                 fsAppend.WriteLine($"Severity: {log.getSeverity()}");
                 fsAppend.WriteLine($"Facility: {log.getFacility()}");
+                fsAppend.WriteLine($"Type: {log.Type}");
                 fsAppend.WriteLine($"Message: {log.Msg}{Environment.NewLine}");
             }
         }

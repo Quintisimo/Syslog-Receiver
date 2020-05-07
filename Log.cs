@@ -5,7 +5,7 @@ namespace SyslogReceiver
 {
     class Log
     {
-        private readonly string[] FACILITIES = { 
+        private readonly string[] FACILITIES = {
             "kernal message",
             "user-level message",
             "Mail System",
@@ -34,23 +34,21 @@ namespace SyslogReceiver
 
 
         private readonly string[] SEVERITIES = {
-              "Emergency: system is unusable",
-              "Alert: action must be taken immediately",
-              "Critical: critical conditions",
-              "Error: error conditions",
-              "Warning: warning conditions",
-              "Notice: normal but significant condition",
-              "Informational: informational messages",
-              "Debug: debug-level messages",
+              "system is unusable",
+              "action must be taken immediately",
+              "critical conditions",
+              "error conditions",
+              "warning conditions",
+              "normal but significant condition",
+              "informational messages",
+              "debug-level messages",
         };
 
         private int facility;
         private int severity;
 
-        public int Facility 
-        { 
-            set
-            {
+        public int Facility {
+            set {
                 if (value > FACILITIES.Length) throw new ArgumentException("Invalid facility code");
                 facility = value;
             }
@@ -61,10 +59,8 @@ namespace SyslogReceiver
             return FACILITIES[facility];
         }
 
-        public int Severity 
-        {
-            set
-            {
+        public int Severity {
+            set {
                 if (value > SEVERITIES.Length) throw new ArgumentException("Invalid severity code");
                 severity = value;
             }
@@ -83,10 +79,6 @@ namespace SyslogReceiver
 
         public string Msg { get; set; }
 
-        public string AppName { get; set; }
-
-        public int ProcId { get; set; }
-
-        public int MsgId { get; set; }
+        public string Type { get; set; }
     }
 }
