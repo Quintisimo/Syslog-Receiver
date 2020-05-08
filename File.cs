@@ -16,7 +16,7 @@ namespace SyslogReceiver
         public static void WriteLog(Log log)
         {
             string fileName = Path.Combine(DIRECTORY, $"{FILE_NAME} {DateTime.Now:dd-MM-yyyy}.txt");
-            
+
             if (!Directory.Exists(DIRECTORY))
             {
                 Directory.CreateDirectory(DIRECTORY);

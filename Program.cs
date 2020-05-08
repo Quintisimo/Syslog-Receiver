@@ -41,8 +41,8 @@ namespace SyslogReceiver
                 Thread listenerThread = new Thread(StartServer);
                 listenerThread.Start();
 
-                Thread testerThread = new Thread(Tester);
-                testerThread.Start();
+                //Thread testerThread = new Thread(Tester);
+                //testerThread.Start();
 
                 Task.Run(() => WriterTask());
             }
@@ -63,12 +63,12 @@ namespace SyslogReceiver
 
             try
             {
-                while(true)
+                while (true)
                 {
                     byte[] bytes = listener.Receive(ref endPoint);
                     string data = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
                     Console.WriteLine(data);
-                    lock(writerLock)
+                    lock (writerLock)
                     {
                         Queue.Add(data);
                     }
@@ -77,7 +77,7 @@ namespace SyslogReceiver
             catch (Exception e)
             {
 
-                Console.WriteLine(e.Message);
+                Console.WriteLine($"Server Error: {e.Message}");
             }
             finally
             {
@@ -92,11 +92,11 @@ namespace SyslogReceiver
         {
             try
             {
-                while(true)
+                while (true)
                 {
                     Task.Delay(1000).Wait();
 
-                    lock(writerLock)
+                    lock (writerLock)
                     {
                         foreach (string message in Queue)
                         {
@@ -110,39 +110,36 @@ namespace SyslogReceiver
 
                                 if (!int.TryParse(GetValue(PROCESS_ID_REGEX, message), out int processId))
                                 {
-                                    // TODO: Find a better way to handle error
-                                    processId = 0;
-                                }
-                                
-                                if (!int.TryParse(GetValue(PRIORITY_REGEX, message), out int priority))
-                                {
-                                    // TODO: Find a better way to handle error
-                                    priority = 0;
+                                    processId = -1;
                                 }
 
-                                string msg = GetValue(MESSAGE_REGEX, message);
-                                string hostname = endPoint.Address.ToString();
-
-                                string processName = GetValue(PROCESS_NAME_REGEX, message);
-
-                                int facility = priority / 8;
-                                int severity = priority - (facility * 8);
-
-                                Log log = new Log
+                                if (int.TryParse(GetValue(PRIORITY_REGEX, message), out int priority))
                                 {
-                                    Hostname = hostname,
-                                    Timestamp = timeStamp,
-                                    Msg = msg,
-                                    ProcessId = processId,
-                                    ProcessName = processName,
-                                    Facility = facility,
-                                    Severity = severity,
-                                };
+                                    string msg = GetValue(MESSAGE_REGEX, message);
+                                    string hostname = endPoint.Address.ToString();
 
-                                //File.WriteLog(log);
-                                Database.SaveLog(log);
-                                Console.WriteLine($"Received from {hostname}");
-                                Console.WriteLine($"Data: {message}{Environment.NewLine}");
+                                    string processName = GetValue(PROCESS_NAME_REGEX, message);
+
+                                    int facility = priority / 8;
+                                    int severity = priority - (facility * 8);
+
+                                    Log log = new Log
+                                    {
+                                        Hostname = hostname,
+                                        Timestamp = timeStamp,
+                                        Msg = msg,
+                                        ProcessId = processId,
+                                        ProcessName = processName,
+                                        Facility = facility,
+                                        Severity = severity,
+                                    };
+
+                                    //File.WriteLog(log);
+                                    Database.SaveLog(log);
+                                    Console.WriteLine($"Received from {hostname}");
+                                    Console.WriteLine($"Data: {message}{Environment.NewLine}");
+                                }
+
 
                             }
                         }
@@ -153,7 +150,7 @@ namespace SyslogReceiver
             catch (Exception e)
             {
 
-                Console.WriteLine(e.Message);
+                Console.WriteLine($"Write Error: {e.Message}");
             }
         }
 

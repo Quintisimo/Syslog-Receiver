@@ -22,7 +22,7 @@ namespace SyslogReceiver
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine($"Connection Error: {e.Message}");
             }
             return db;
         }
@@ -37,7 +37,7 @@ namespace SyslogReceiver
             SqlCommand insertLog = new SqlCommand(@"INSERT INTO SYSLOGS(severityId, facilityId, timeStamp, hostname, processId, processName, message) 
             VALUES (@severityId, @facilityId, @timeStamp, @hostname, @processId, @processName, @message)", db);
 
-            insertLog.Parameters.Add(new SqlParameter("@severityId", SqlDbType.Int) { Value = log.Severity  } );
+            insertLog.Parameters.Add(new SqlParameter("@severityId", SqlDbType.Int) { Value = log.Severity });
             insertLog.Parameters.Add(new SqlParameter("@facilityId", SqlDbType.Int) { Value = log.Facility });
             insertLog.Parameters.Add(new SqlParameter("@timeStamp", SqlDbType.DateTime2) { Value = log.Timestamp });
             insertLog.Parameters.Add(new SqlParameter("@hostname", SqlDbType.NVarChar) { Value = log.Hostname });
@@ -51,7 +51,7 @@ namespace SyslogReceiver
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine($"Insertion Error: {e.Message}");
             }
         }
     }
