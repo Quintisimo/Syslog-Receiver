@@ -10,8 +10,8 @@ namespace SyslogReceiver
         /// <summary>
         /// Connect to database
         /// </summary>
-        /// <returns></returns>
-        private static SqlConnection connect()
+        /// <returns>database object</returns>
+        private static SqlConnection Connect()
         {
             ConnectionStringSettings settings = ConfigurationManager.ConnectionStrings["DB Connection"];
             SqlConnection db = new SqlConnection(settings.ConnectionString);
@@ -33,7 +33,7 @@ namespace SyslogReceiver
         /// <param name="log">log object</param>
         public static void SaveLog(Log log)
         {
-            SqlConnection db = connect();
+            SqlConnection db = Connect();
             SqlCommand insertLog = new SqlCommand(@"INSERT INTO SYSLOGS(severityId, facilityId, timeStamp, hostname, processId, processName, message) 
             VALUES (@severityId, @facilityId, @timeStamp, @hostname, @processId, @processName, @message)", db);
 

@@ -40,7 +40,7 @@ namespace SyslogReceiver
               "warning conditions",
               "normal but significant condition",
               "informational messages",
-              "debug-level messages",
+              "debug-level messages"
         };
 
         private int facility;
