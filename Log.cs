@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net;
 
 namespace SyslogReceiver
 {
@@ -52,6 +51,7 @@ namespace SyslogReceiver
                 if (value > FACILITIES.Length) throw new ArgumentException("Invalid facility code");
                 facility = value;
             }
+            get { return facility; }
         }
 
         public string getFacility()
@@ -64,6 +64,7 @@ namespace SyslogReceiver
                 if (value > SEVERITIES.Length) throw new ArgumentException("Invalid severity code");
                 severity = value;
             }
+            get { return severity; }
         }
 
         public string getSeverity()
@@ -71,7 +72,6 @@ namespace SyslogReceiver
             return SEVERITIES[severity];
         }
 
-        public int Version { get; set; }
 
         public DateTime Timestamp { get; set; }
 

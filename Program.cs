@@ -4,17 +4,15 @@ using System.Text.RegularExpressions;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.IO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Globalization;
 
 namespace SyslogReceiver
 {
     class Program
     {
         private const int PORT = 514;
-        private const string DIRECTORY = @"C:\Users\Administrator\Documents";
-        private const string FILE_NAME = "log";
 
         private const string TEST_MESSAGE_1 = @"<30>May  7 11:43:55 dhcpd[56209]: DHCPACK on 192.168.199.2 to 50:c7:bf:9e:c6:6c via em4";
         private const string TEST_MESSAGE_2 = @"<30>May  7 11:03:36 unbound: [43078:0] info: resolving www.tm.a.prd.aadg.akadns.net. A IN";
@@ -43,15 +41,14 @@ namespace SyslogReceiver
                 Thread listenerThread = new Thread(StartServer);
                 listenerThread.Start();
 
-                //Thread testerThread = new Thread(Tester);
-                //testerThread.Start();
+                Thread testerThread = new Thread(Tester);
+                testerThread.Start();
 
                 Task.Run(() => WriterTask());
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
-                Environment.Exit(-1);
             }
         }
 
@@ -105,14 +102,29 @@ namespace SyslogReceiver
                         {
                             if (!message.Contains("last message repeated"))
                             {
-                                DateTime timeStamp = DateTime.ParseExact(GetValue(DATE_REGEX, message), DATE_FORMAT, null);
+                                if (!DateTime.TryParseExact(GetValue(DATE_REGEX, message), DATE_FORMAT, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime timeStamp))
+                                {
+                                    Console.WriteLine("Date received was invalid using current date");
+                                    timeStamp = DateTime.Now;
+                                }
+
+                                if (!int.TryParse(GetValue(PROCESS_ID_REGEX, message), out int processId))
+                                {
+                                    // TODO: Find a better way to handle error
+                                    processId = 0;
+                                }
+                                
+                                if (!int.TryParse(GetValue(PRIORITY_REGEX, message), out int priority))
+                                {
+                                    // TODO: Find a better way to handle error
+                                    priority = 0;
+                                }
+
                                 string msg = GetValue(MESSAGE_REGEX, message);
                                 string hostname = endPoint.Address.ToString();
 
-                                int processId = int.Parse(GetValue(PROCESS_ID_REGEX, message));
                                 string processName = GetValue(PROCESS_NAME_REGEX, message);
 
-                                int priority = int.Parse(GetValue(PRIORITY_REGEX, message));
                                 int facility = priority / 8;
                                 int severity = priority - (facility * 8);
 
@@ -127,7 +139,8 @@ namespace SyslogReceiver
                                     Severity = severity,
                                 };
 
-                                WriteToFile(log);
+                                //File.WriteLog(log);
+                                Database.SaveLog(log);
                                 Console.WriteLine($"Received from {hostname}");
                                 Console.WriteLine($"Data: {message}{Environment.NewLine}");
 
@@ -141,7 +154,6 @@ namespace SyslogReceiver
             {
 
                 Console.WriteLine(e.Message);
-                Environment.Exit(-1);
             }
         }
 
@@ -173,38 +185,5 @@ namespace SyslogReceiver
             }
         }
 
-        /// <summary>
-        /// Write log to file
-        /// </summary>
-        /// <param name="log">log row</param>
-        private static void WriteToFile(Log log)
-        {
-            string fileName = Path.Combine(DIRECTORY, $"{FILE_NAME} {DateTime.Now:dd-MM-yyyy}.txt");
-            
-            if (!Directory.Exists(DIRECTORY))
-            {
-                Directory.CreateDirectory(DIRECTORY);
-            }
-
-            if (!File.Exists(fileName))
-            {
-                using (FileStream fsCreate = File.Create(fileName))
-                {
-                    Byte[] header = new UTF8Encoding(true).GetBytes($"Created at {DateTime.Now:dd-MM-yyyy}{Environment.NewLine}{Environment.NewLine}");
-                    fsCreate.Write(header, 0, header.Length);
-                }
-            }
-
-            using (StreamWriter fsAppend= File.AppendText(fileName))
-            {
-                fsAppend.WriteLine($"Host: {log.Hostname}");
-                fsAppend.WriteLine($"Timestamp: {log.Timestamp}");
-                fsAppend.WriteLine($"Process Id: {log.ProcessId}");
-                fsAppend.WriteLine($"Process Name: {log.ProcessName}");
-                fsAppend.WriteLine($"Severity: {log.getSeverity()}");
-                fsAppend.WriteLine($"Facility: {log.getFacility()}");
-                fsAppend.WriteLine($"Message: {log.Msg}{Environment.NewLine}");
-            }
-        }
     }
 }
